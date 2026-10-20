@@ -54,6 +54,8 @@ svg{width:100%;height:auto;display:block}
 .gtot{font-size:1rem}.gtot b{color:var(--accent)}
 .gtw{display:none;margin-top:8px}.lk .gtw{display:block}
 .gcard{position:relative}
+.as{margin:0!important;padding:3px 10px;font-size:.72rem;border-radius:999px;background:var(--accent);color:var(--bg);border:1px solid var(--accent)}
+.as.off{background:var(--panel);color:var(--mute);border:1px solid var(--line)}
 .gpc{font-size:.8rem;color:var(--accent);font-weight:700;min-height:1.2em}
 #gbulk:not(.lk) .gbt-w{display:none}
 .mb{margin:0!important;padding:3px 10px;font-size:.72rem;border-radius:999px;background:var(--panel);color:var(--ink);border:1px solid var(--line)}
@@ -87,7 +89,7 @@ svg{width:100%;height:auto;display:block}
 <main>
 <h1>強化コスト分布シミュレーター</h1>
 <p class="sub">防具(帽子・上衣・下衣)と武器の強化に必要なゴールドの分布を、モンテカルロ法で求めます。</p>
-<div class="tabs"><button id="tb1" class="on">分布シミュレーター</button><button id="tb2">強化体験</button></div>
+<div class="tabs"><button id="tb1" class="on">分布シミュレーター</button><button id="tb2">強化体験</button><button id="tb3">実際から計算</button></div>
 <div id="tab1">
 
 <section class="panel">
@@ -136,11 +138,24 @@ svg{width:100%;height:auto;display:block}
 <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px"><div id="gbig" hidden style="flex:1;margin:0;min-width:200px"></div><div id="gadd" hidden style="padding:12px;border:1px solid var(--warn);border-radius:10px;background:var(--bg)"><small style="color:var(--warn);display:block;margin-bottom:6px">所持金が不足しています。追加できます</small><div style="display:flex;gap:6px;align-items:center"><input id="gadn" type="number" min="0" value="10000000" style="width:130px"><button type="button" id="gaddb" style="margin:0;padding:8px 14px">追加</button></div></div></div>
 <div class="gg" id="gcards"></div>
 <div class="gbar"><button id="glock">初期値を確定</button><button id="greset" style="background:var(--panel);color:var(--ink);border:1px solid var(--line)">リセット</button><span class="gtot" id="gtot"></span><span class="gtot" id="grem"></span></div>
-<div class="gbar" style="margin-top:10px"><label for="gms" style="margin:0">自動実行</label><input id="gms" type="number" min="10" value="200" style="width:90px"><span>msで1回</span><button type="button" id="gauto" disabled>開始</button></div>
+<div class="gbar" style="margin-top:10px"><label for="gms" style="margin:0">自動実行</label><input id="gms" type="number" min="10" value="200" style="width:90px"><span>msで1回</span><button type="button" id="gauto" disabled>開始</button><button type="button" id="gcalc" disabled>現在の状況から確率を計算</button></div>
+<div class="gbar" id="gautosel" style="margin-top:8px"><span class="note" style="margin:0">自動実行の対象</span><button type="button" class="as" data-i="0"></button><button type="button" class="as" data-i="1"></button><button type="button" class="as" data-i="2"></button><button type="button" class="as" data-i="3"></button></div>
+<div id="gnow" hidden style="margin-top:14px"></div>
 <p class="gmsg dn" id="gerr"></p>
 <p class="hero" id="gfinal" hidden style="margin-top:14px"></p>
 <div id="glinkout" hidden style="margin-top:14px"></div>
 </section>
+</div>
+<div id="tab3" hidden>
+<section class="panel">
+<p class="note" style="margin:0 0 12px">実際のゲームで試行している途中の状況から、目標までの達成確率を計算します。</p>
+<div class="grid" id="rmg" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr))"></div>
+<div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:14px"><div><label for="rbi">初期レベル(一括)</label><input id="rbi" type="number" min="0" max="20" value="0" style="width:120px"></div><div><label for="rbt">目標レベル(一括)</label><input id="rbt" type="number" min="0" max="20" value="18" style="width:120px"></div></div>
+<div class="tw" style="margin-top:14px"><table id="rtab"><tr><th>部位</th><th>初期レベル</th><th>目標レベル</th><th>現在レベル</th><th></th></tr></table></div>
+<button id="rgo">計算する</button><span id="rst" style="font-size:.85rem;color:var(--mute);margin-left:10px"></span>
+</section>
+<section class="panel" id="rout" hidden></section>
+<section class="panel" id="rchp" hidden><svg id="rchart" viewBox="0 0 700 280" role="img" aria-label="残りに必要なゴールドの分布"></svg><p class="note">現在のレベルから目標までに必要なゴールドの分布です(98パーセンタイルまで)。実線は現在の所持金、点線は中央値と期待値です。</p></section>
 </div>
 </main>
 
@@ -237,7 +252,7 @@ function upd(i){
   $('gs'+i).innerHTML='現在 <b>+'+lv[i]+'</b><br>使用 '+fmt(uG[i])+' G / '+fmt(uP[i])+' pt';
   $('gm'+i).textContent=msg[i];$('gm'+i).className='gmsg '+mc[i];
   $('gn'+i).innerHTML=locked?nextInfo(i):'';
-  $('ge'+i).disabled=!locked||lv[i]>=20||(linked&&!$('gv'+i).checked);$('ge'+i).textContent=stopped[i]?'継続':'強化';
+  $('ge'+i).disabled=!locked||lv[i]>=20||(linked&&!$('gv'+i).checked)||calcBusy;$('ge'+i).textContent=stopped[i]?'継続':'強化';
   $('gi'+i).disabled=locked;if($('gt'+i))$('gt'+i).disabled=locked;$('gv'+i).disabled=locked;const gb=$('gb'+i),on=$('gv'+i).checked;gb.textContent=on?'有効':'無効';gb.className='vt'+(on?'':' off');gb.disabled=locked;$('gi'+i).closest('.gcard').style.opacity=(linked&&!$('gv'+i).checked)?.45:1;
 }
 function updTot(){
@@ -252,12 +267,14 @@ function buildCards(){
 let ach=[false,false,false,false],stopped=[false,false,false,false];
 let doneT=[false,false,false,false],finalUsed=null,linkSorted=null;
 let added=0,short=false,autoT=null;const funds=()=>moneyInit+added;
+let autoSel=[true,true,true,true];
+let calcBusy=false;function refreshAll(){for(let i=0;i<4;i++)upd(i);remDisp();}
 let pieceUsed=[null,null,null,null],pieceSorted={};
 function showPiece(i){const a=pieceSorted[i];if(pieceUsed[i]==null||!a)return;let n=0;while(n<a.length&&a[n]<=pieceUsed[i])n++;$('gp'+i).innerHTML='この部位の結果: 下位 '+(n/a.length*100).toFixed(1)+'%';}
 function afford(i){if(!linked)return true;return (i==0?3000:1500)*(lv[i]+1)<=funds()-uG.reduce((a,b)=>a+b,0);}
-function stopAuto(){if(autoT){clearInterval(autoT);autoT=null;}$('gauto').textContent='開始';$('gms').disabled=false;}
+function stopAuto(){if(autoT){clearInterval(autoT);autoT=null;}$('gauto').textContent='開始';$('gms').disabled=false;remDisp();}
 function tick(){
-  const els=[0,1,2,3].filter(i=>lv[i]<20&&(!linked||($('gv'+i).checked&&!ach[i])));
+  const els=[0,1,2,3].filter(i=>autoSel[i]&&lv[i]<20&&(!linked||($('gv'+i).checked&&!ach[i])));
   if(!els.length){stopAuto();pop('自動実行を終了しました');return;}
   for(const i of els){if(!afford(i)){stopAuto();enh(i);return;}enh(i);}
 }
@@ -285,9 +302,9 @@ function askContinue(i){
   $('cyes').onclick=()=>{o.remove();ach[i]=false;stopped[i]=false;enh(i);};
   $('cno').onclick=()=>{o.remove();stopped[i]=true;upd(i);};
 }
-function pop(t,k){let c=$('pops');if(!c){c=document.createElement('div');c.id='pops';document.body.appendChild(c);}const d=document.createElement('div');d.className='popup'+(k?' '+k:'');d.textContent=t;d.onclick=()=>d.remove();c.appendChild(d);setTimeout(()=>d.remove(),2600);}
+function pop(t,k){let c=$('pops');if(!c){c=document.createElement('div');c.id='pops';document.body.appendChild(c);}const d=document.createElement('div');d.className='popup'+(k?' '+k:'');d.textContent=t;d.onclick=()=>d.remove();c.replaceChildren(d);setTimeout(()=>d.remove(),2600);}
 function enh(i){
-  const l=lv[i];if(!locked||l>=20)return;
+  const l=lv[i];if(!locked||l>=20||calcBusy)return;
   if(linked&&ach[i]){askContinue(i);return;}
   if(linked){const need=(i==0?3000:1500)*(l+1);if(need>funds()-uG.reduce((a,b)=>a+b,0)){short=true;remDisp();pop('所持金が足りません。リセットしてください','err');return;}}
   uG[i]+=(i==0?3000:1500)*(l+1);uP[i]+=l+1;
@@ -304,11 +321,11 @@ $('glock').onclick=()=>{
   for(let i=0;i<4;i++)upd(i);updTot();
 };
 $('greset').onclick=()=>{locked=false;lv=init.slice();uG=[0,0,0,0];uP=[0,0,0,0];msg=['','','',''];mc=['','','',''];for(let i=0;i<4;i++)upd(i);updTot();};
-function showTab(n){$('tab1').hidden=n!=1;$('tab2').hidden=n!=2;$('tb1').className=n==1?'on':'';$('tb2').className=n==2?'on':'';}
-$('tb1').onclick=()=>showTab(1);$('tb2').onclick=()=>showTab(2);
+function showTab(n){$('tab1').hidden=n!=1;$('tab2').hidden=n!=2;$('tb1').className=n==1?'on':'';$('tb2').className=n==2?'on':'';$('tab3').hidden=n!=3;$('tb3').className=n==3?'on':'';}
+$('tb1').onclick=()=>showTab(1);$('tb2').onclick=()=>showTab(2);$('tb3').onclick=()=>showTab(3);
 function remDisp(){
   $('glinkon').disabled=locked;$('gbi').disabled=locked;$('gbt').disabled=locked;$('gmon').disabled=locked;document.querySelectorAll('.mb').forEach(b=>b.disabled=locked);
-  const rem=funds()-uG.reduce((a,b)=>a+b,0),on=linked&&locked;$('gadd').hidden=!(on&&short);$('gauto').disabled=!locked;$('gbig').hidden=!on;if(on){$('gbig').innerHTML='<small>残り所持金</small><b>'+fmt(rem)+'</b> G';$('gbig').className=rem<funds()*0.1?'low':'';}$('grem').innerHTML='';
+  const rem=funds()-uG.reduce((a,b)=>a+b,0),on=linked&&locked;$('gadd').hidden=!(on&&short);$('gauto').disabled=!locked||calcBusy;$('gcalc').disabled=!(locked&&linked)||!!autoT||calcBusy;$('gbig').hidden=!on;if(on){$('gbig').innerHTML='<small>残り所持金</small><b>'+fmt(rem)+'</b> G';$('gbig').className=rem<funds()*0.1?'low':'';}$('grem').innerHTML='';
 }
 function syncLink(){
   linked=$('glinkon').checked;
@@ -331,8 +348,26 @@ async function runLinkSummary(){
   el.innerHTML='<p class="hero" id="glhero">'+pp[0]+'</p><p class="note">対象: '+specs.map(p=>NAMES[p.i]).join('・')+'。初期値から初期目標値までの分布です(強化を進めても変わりません)。期待値 '+fmt(e[0])+' G(厳密計算) / 期待素材pt '+fmt(e[1])+' pt</p><div class="tw"><table>'+pp[1]+'</table></div><p class="note" style="margin-top:12px">部位別の分布(各部位が単独で目標に達するまでのゴールド)</p><div class="tw"><table><tr><th>部位</th><th>平均</th><th>5%</th><th>中央値</th><th>95%</th></tr>'+specs.map(p=>{const a=pieceSorted[p.i];return '<tr><td>'+NAMES[p.i]+' +'+p.s+'→+'+p.t+'</td><td>'+fmt(a.reduce((x,y)=>x+y,0)/a.length)+'</td><td>'+fmt(pct(a,5))+'</td><td>'+fmt(pct(a,50))+'</td><td>'+fmt(pct(a,95))+'</td></tr>';}).join('')+'</table></div>';for(let i=0;i<4;i++)showPiece(i);showFinal();updHero();
 }
 const mv=()=>+$('gmon').value||0;
+function renderAS(){document.querySelectorAll('.as').forEach(b=>{const i=+b.dataset.i,on=autoSel[i];b.textContent=NAMES[i]+(on?' ON':' OFF');b.className='as'+(on?'':' off');b.setAttribute('aria-pressed',on);});}
+$('gautosel').addEventListener('click',e=>{const b=e.target.closest('.as');if(!b)return;const i=+b.dataset.i;autoSel[i]=!autoSel[i];renderAS();});
+renderAS();
+$('gcalc').addEventListener('click',async()=>{
+  if(calcBusy||autoT||!locked||!linked)return;
+  const tok=linkTok;calcBusy=true;refreshAll();
+  const box=$('gnow');box.hidden=false;box.innerHTML='<p class="note">計算中…(その間は強化できません)</p>';
+  const rem=funds()-uG.reduce((a,b)=>a+b,0);
+  const specs=[0,1,2,3].filter(i=>$('gv'+i).checked&&tgtOf(i)>lv[i]).map(i=>({i,s:lv[i],t:tgtOf(i),m:i==0?2:1}));
+  if(!specs.length){box.innerHTML='<p class="note">有効な部位はすべて目標に達しています。</p>';}
+  else{
+    const r=await simulate(specs,f=>{if(tok===linkTok)box.innerHTML='<p class="note">計算中 '+Math.round(f*100)+'%(その間は強化できません)</p>';});
+    if(tok!==linkTok){calcBusy=false;refreshAll();return;}
+    let n=0;const K=r.sorted.length;while(n<K&&r.sorted[n]<=rem)n++;
+    box.innerHTML='<p class="hero">残り所持金 '+fmt(rem)+' G で目標達成できる確率は<b>'+(n/K*100).toFixed(1)+'%</b></p><p class="note">対象(現在のレベルから): '+specs.map(p=>NAMES[p.i]+' +'+p.s+'→+'+p.t).join(' / ')+'。残りに必要なゴールドの目安: 中央値 '+fmt(pct(r.sorted,50))+' G / 90% '+fmt(pct(r.sorted,90))+' G</p>';
+  }
+  calcBusy=false;refreshAll();
+});
 $('gaddb').addEventListener('click',()=>{const v=+$('gadn').value||0;if(v<=0)return;added+=v;short=false;updHero();remDisp();pop('所持金を '+fmt(v)+'G 追加しました');});
-$('gauto').addEventListener('click',()=>{if(autoT){stopAuto();return;}if(!locked)return;autoT=setInterval(tick,Math.max(10,+$('gms').value||200));$('gms').disabled=true;$('gauto').textContent='停止';});
+$('gauto').addEventListener('click',()=>{if(autoT){stopAuto();return;}if(!locked||calcBusy)return;autoT=setInterval(tick,Math.max(10,+$('gms').value||200));$('gms').disabled=true;$('gauto').textContent='停止';remDisp();});
 $('gclr').addEventListener('click',()=>{if(locked)return;$('gmon').value=0;syncLink();});
 $('gmonb').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||locked)return;$('gmon').value=b.dataset.m?mv()*+b.dataset.m:mv()+ +b.dataset.v;syncLink();});
 ['glinkon','gmon'].forEach(id=>$(id).addEventListener('input',syncLink));
@@ -342,8 +377,57 @@ $('gbi').addEventListener('input',()=>bulk('i'));$('gbt').addEventListener('inpu
 $('glinkon').addEventListener('input',()=>{if(linked){$('s').value=$('gbi').value;$('t').value=$('gbt').value;syncLink();}});
 $('gcards').addEventListener('click',e=>{const v=e.target.closest('.vt');if(!v||locked)return;const c=$('gv'+v.id.slice(2));c.checked=!c.checked;syncLink();});
 $('gcards').addEventListener('input',e=>{if(e.target.id&&/^g[itv]\d$/.test(e.target.id))syncLink();});
-$('glock').addEventListener('click',()=>{if(!locked)return;pieceUsed=[null,null,null,null];pieceSorted={};for(let i=0;i<4;i++)$('gp'+i).innerHTML='';added=0;short=false;doneT=[false,false,false,false];finalUsed=null;$('gfinal').hidden=true;moneyInit=mv();syncLink();if(linked)runLinkSummary();});
-$('greset').addEventListener('click',()=>{pieceUsed=[null,null,null,null];pieceSorted={};for(let i=0;i<4;i++)$('gp'+i).innerHTML='';stopAuto();added=0;short=false;remDisp();doneT=[false,false,false,false];finalUsed=null;linkSorted=null;$('gfinal').hidden=true;ach=[false,false,false,false];stopped=[false,false,false,false];if($('cfm'))$('cfm').remove();linkTok++;$('gerr').textContent='';$('glinkout').hidden=true;syncLink();});
+$('glock').addEventListener('click',()=>{if(!locked)return;$('gnow').hidden=true;pieceUsed=[null,null,null,null];pieceSorted={};for(let i=0;i<4;i++)$('gp'+i).innerHTML='';added=0;short=false;doneT=[false,false,false,false];finalUsed=null;$('gfinal').hidden=true;moneyInit=mv();syncLink();if(linked)runLinkSummary();});
+$('greset').addEventListener('click',()=>{$('gnow').hidden=true;calcBusy=false;pieceUsed=[null,null,null,null];pieceSorted={};for(let i=0;i<4;i++)$('gp'+i).innerHTML='';stopAuto();added=0;short=false;remDisp();doneT=[false,false,false,false];finalUsed=null;linkSorted=null;$('gfinal').hidden=true;ach=[false,false,false,false];stopped=[false,false,false,false];if($('cfm'))$('cfm').remove();linkTok++;$('gerr').textContent='';$('glinkout').hidden=true;syncLink();});
+function moneyBox(id,label){
+  const add=[['+1万',10000],['+10万',100000],['+100万',1000000],['+1000万',10000000]].map(a=>'<button type="button" class="mb add" data-v="'+a[1]+'">'+a[0]+'</button>').join('');
+  const mul=[['×千',1000],['×万',10000]].map(a=>'<button type="button" class="mb mul" data-m="'+a[1]+'">'+a[0]+'</button>').join('');
+  return '<div data-mb="'+id+'"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><label for="'+id+'" style="margin:0">'+label+'</label><button type="button" class="mb clr" data-a="clr">クリア</button></div><div style="display:flex;gap:10px;align-items:center"><input id="'+id+'" type="number" min="0" value="60000000" style="width:170px"><span style="display:grid;grid-template-columns:repeat(2,auto);gap:6px">'+add+mul+'</span></div></div>';
+}
+$('rmg').innerHTML=moneyBox('rm0','初期所持金(G)')+moneyBox('rm1','現在の所持金(G)');
+$('rmg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const box=b.closest('[data-mb]'),inp=$(box.dataset.mb),v=+inp.value||0;
+  if(b.dataset.a==='clr')inp.value=0;else if(b.dataset.m)inp.value=v*+b.dataset.m;else if(b.dataset.v)inp.value=v+ +b.dataset.v;});
+$('rtab').insertAdjacentHTML('beforeend',NAMES.map((n,i)=>'<tr><td>'+n+'</td><td><input type="number" min="0" max="20" id="ri'+i+'" value="0" style="min-width:64px"></td><td><input type="number" min="0" max="20" id="rt'+i+'" value="18" style="min-width:64px"></td><td><input type="number" min="0" max="20" id="rc'+i+'" value="0" style="min-width:64px"></td><td><button type="button" class="as" id="rv'+i+'" data-i="'+i+'">有効</button></td></tr>').join(''));
+let rEn=[true,true,true,true];
+function renderRV(){for(let i=0;i<4;i++){const b=$('rv'+i),on=rEn[i];b.textContent=on?'有効':'無効';b.className='as'+(on?'':' off');b.setAttribute('aria-pressed',on);b.closest('tr').style.opacity=on?1:.45;}}
+$('rtab').addEventListener('click',e=>{const b=e.target.closest('.as');if(!b)return;const i=+b.dataset.i;rEn[i]=!rEn[i];renderRV();});renderRV();
+[['rbi','ri'],['rbt','rt']].forEach(([a,p])=>$(a).addEventListener('input',()=>{for(let i=0;i<4;i++)$(p+i).value=$(a).value;}));
+function prob(a,b){let n=0;while(n<a.length&&a[n]<=b)n++;return n/a.length*100;}
+function drawChart(el,sorted,budget,exG){
+  const K=sorted.length,cap=pct(sorted,98),NB=120,cnt=new Array(NB).fill(0);
+  for(let k=0;k<K;k++)if(sorted[k]<cap)cnt[Math.floor(sorted[k]/cap*NB)]++;
+  const sm=cnt.map((_,i)=>{let a=0,n=0;for(let d=-4;d<=4;d++){const j=i+d;if(j>=0&&j<NB){a+=cnt[j];n++;}}return a/n;});
+  const bars=[];for(let i=0;i<NB/3;i++)bars.push((cnt[3*i]+cnt[3*i+1]+cnt[3*i+2])/3);
+  const mx=Math.max(...sm,...bars),W=700,H=280,L=10,B=34,bw=(W-L*2)/NB;
+  let svg='';
+  bars.forEach((c,i)=>{const h=c/mx*(H-B-14);svg+='<rect x="'+(L+i*3*bw+1)+'" y="'+(H-B-h)+'" width="'+(3*bw-2)+'" height="'+h+'" fill="var(--bar)" fill-opacity=".5"/>';});
+  let d='M'+L+' '+(H-B);sm.forEach((c,i)=>{d+=' L'+(L+(i+.5)*bw).toFixed(1)+' '+(H-B-c/mx*(H-B-14)).toFixed(1);});d+=' L'+(W-L)+' '+(H-B)+' Z';
+  svg+='<path d="'+d+'" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>';
+  svg+='<line x1="'+L+'" x2="'+(W-L)+'" y1="'+(H-B)+'" y2="'+(H-B)+'" stroke="var(--line)"/>';
+  for(let i=0;i<=4;i++){const v=cap*i/4,x=L+i*(W-L*2)/4;svg+='<text x="'+x+'" y="'+(H-12)+'" font-size="12" fill="var(--mute)" text-anchor="'+(i==0?'start':i==4?'end':'middle')+'">'+fmt(v/10000)+'万</text>';}
+  [[budget,'現在の所持金','var(--warn)',20,0],[pct(sorted,50),'中央値','var(--ink)',36,1],[exG,'期待値','var(--accent)',52,1]].forEach(m=>{if(m[0]>0&&m[0]<cap){const x=L+m[0]/cap*(W-L*2),a=x>W*0.75;svg+='<line x1="'+x+'" x2="'+x+'" y1="8" y2="'+(H-B)+'" stroke="'+m[2]+'" stroke-width="2"'+(m[4]?' stroke-dasharray="5 4"':'')+'/><text x="'+(a?x-5:x+5)+'" y="'+m[3]+'" font-size="12" fill="'+m[2]+'" text-anchor="'+(a?'end':'start')+'">'+m[1]+' '+fmt(m[0]/10000)+'万</text>';}});
+  el.innerHTML=svg;
+}
+$('rgo').onclick=async()=>{
+  const g=v=>Math.max(0,Math.min(20,Math.floor(+v||0)));
+  const m0=+$('rm0').value||0,m1=+$('rm1').value||0;
+  const P4=[0,1,2,3].map(i=>({i,s0:g($('ri'+i).value),t:g($('rt'+i).value),c:g($('rc'+i).value),m:i==0?2:1}));
+  const now=P4.filter(p=>rEn[p.i]&&p.t>p.c).map(p=>({i:p.i,s:p.c,t:p.t,m:p.m}));
+  const ini=P4.filter(p=>rEn[p.i]&&p.t>p.s0).map(p=>({i:p.i,s:p.s0,t:p.t,m:p.m}));
+  if(!now.length){$('rst').textContent='現在レベルが目標未満の部位がありません(すべて達成済みです)。';return;}
+  $('rgo').disabled=true;
+  const A=await simulate(now,f=>$('rst').textContent='計算中(現在) '+Math.round(f*100)+'%');
+  let pI=null;
+  if(ini.length){const B=await simulate(ini,f=>$('rst').textContent='計算中(初期) '+Math.round(f*100)+'%');pI=prob(B.sorted,m0);}
+  const pN=prob(A.sorted,m1),exG=now.reduce((a,p)=>a+p.m*expAt(p.s,p.t,COST),0),exP=now.reduce((a,p)=>a+expAt(p.s,p.t,l=>l+1),0);
+  const rows=[['0.15%(超幸運)',.15],['5%',5],['25%',25],['50%(中央値)',50],['75%',75],['90%',90],['95%',95],['99.85%(超不運)',99.85]];
+  $('rout').innerHTML='<p class="hero">現在の所持金 '+fmt(m1/10000)+'万G で目標を達成できる確率は<b>'+pN.toFixed(1)+'%</b></p>'
+   +'<p class="note">使用済みゴールド(初期所持金−現在の所持金): '+fmt(m0-m1)+' G'+(pI==null?'':' / 最初の状態(初期レベルから、初期所持金 '+fmt(m0/10000)+'万G)での達成確率: '+pI.toFixed(1)+'%')+'</p>'
+   +'<p class="note">対象(現在→目標): '+now.map(p=>NAMES[p.i]+' +'+p.s+'→+'+p.t).join(' / ')+'。期待ゴールド '+fmt(exG)+' G・期待素材pt '+fmt(exP)+' pt</p>'
+   +'<div class="tw"><table><tr><th>残りに必要なゴールド</th><th>ゴールド</th></tr>'+rows.map(r=>'<tr><td>'+r[0]+'</td><td>'+fmt(pct(A.sorted,r[1]))+'</td></tr>').join('')+'<tr><td>平均(シミュレーション)</td><td>'+fmt(A.mean)+'</td></tr></table></div>';
+  $('rout').hidden=false;drawChart($('rchart'),A.sorted,m1,exG);$('rchp').hidden=false;
+  $('rst').textContent='完了';$('rgo').disabled=false;
+};
 buildCards();
 </script>
 </body>
