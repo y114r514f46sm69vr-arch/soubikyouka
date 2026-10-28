@@ -36,7 +36,14 @@ th:first-child,td:first-child{text-align:left}
 th{color:var(--mute);font-weight:400}
 svg{width:100%;height:auto;display:block}
 .note{font-size:.8rem;color:var(--mute);margin-top:8px}
+[hidden]{display:none!important}
+body.stat{--accent:#1d4ed8;--bar:#93b4f0}
+@media (prefers-color-scheme:dark){body.stat{--accent:#60a5fa;--bar:#2a4a85}}
+:root[data-theme="dark"] body.stat{--accent:#60a5fa;--bar:#2a4a85}
 .tabs{display:flex;gap:8px;margin-bottom:14px}
+#toptabs{border-bottom:2px solid var(--accent);gap:6px;margin-bottom:18px}
+#toptabs button{font-size:1.05rem;padding:10px 22px;border-radius:8px 8px 0 0}
+#subtabs button,#stabs button{font-size:.85rem;padding:6px 14px}
 .tabs button{margin:0;background:var(--panel);color:var(--ink);border:1px solid var(--line)}
 .tabs button.on{background:var(--accent);color:var(--bg);border-color:var(--accent)}
 .gg{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
@@ -83,13 +90,18 @@ svg{width:100%;height:auto;display:block}
 #gbig small{display:block;color:var(--mute);font-size:.85rem}
 #gbig b{font-size:2.2rem;color:var(--accent);font-variant-numeric:tabular-nums}
 #gbig.low b{color:var(--warn)}
+.panel h2{font-size:1rem;margin:0 0 10px}
+select{width:100%;min-width:180px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
 </style>
 </head>
 <body>
 <main>
-<h1>強化コスト分布シミュレーター</h1>
-<p class="sub">防具(帽子・上衣・下衣)と武器の強化に必要なゴールドの分布を、モンテカルロ法で求めます。</p>
-<div class="tabs"><button id="tb1" class="on">分布シミュレーター</button><button id="tb2">強化体験</button><button id="tb3">実際から計算</button></div>
+<div class="tabs" id="toptabs"><button id="top1" class="on">分布計算・装備強化</button><button id="top2">ステータス計算</button></div>
+<h1 id="ttl">強化コスト分布シミュレーター</h1>
+<p class="sub" id="sub">防具(帽子・上衣・下衣)と武器の強化に必要なゴールドの分布を、モンテカルロ法で求めます。</p>
+
+<div class="tabs" id="subtabs"><button id="tb1" class="on">分布シミュレーター</button><button id="tb2">強化体験</button><button id="tb3">実際から計算</button></div>
+<div class="tabs" id="stabs" hidden><button id="st1" class="on">ステータス計算</button><button id="st2">ダメージ計算</button></div>
 <div id="tab1">
 
 <section class="panel">
@@ -156,6 +168,51 @@ svg{width:100%;height:auto;display:block}
 </section>
 <section class="panel" id="rout" hidden></section>
 <section class="panel" id="rchp" hidden><svg id="rchart" viewBox="0 0 700 280" role="img" aria-label="残りに必要なゴールドの分布"></svg><p class="note">現在のレベルから目標までに必要なゴールドの分布です(98パーセンタイルまで)。実線は現在の所持金、点線は中央値と期待値です。</p></section>
+</div>
+<div id="tab4" hidden>
+<section class="panel"><h2>基本情報</h2>
+<div class="grid"><div><label for="s_lv">プレイヤーレベル</label><input id="s_lv" type="number" min="1" value="64"></div></div></section>
+<section class="panel"><h2>装備(選択)と装備強化レベル</h2>
+<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:12px"><button type="button" id="s_best" style="margin:0">最適装備</button><div><label for="s_bulk">強化Lv(一括)</label><input id="s_bulk" type="number" min="0" max="20" placeholder="0〜20" style="width:120px"></div></div>
+<div class="tw"><table id="s_eq"><tr><th>部位</th><th>装備</th><th>強化 +Lv</th></tr></table></div></section>
+<section class="panel"><h2>クレパス投資数</h2>
+<div class="grid"><div><label for="s_ca">攻撃(+6%/スタック)</label><input id="s_ca" type="number" min="0" value="0"></div><div><label for="s_ch">体力(+8%/スタック)</label><input id="s_ch" type="number" min="0" value="0"></div><div><label for="s_cd">防御(+15%/スタック)</label><input id="s_cd" type="number" min="0" value="0"></div></div></section>
+<section class="panel"><h2>ステータス</h2>
+<p class="gmsg dn" id="s_warn" hidden></p>
+<div class="tw"><table id="s_res"></table></div>
+<p class="note" id="s_note"></p></section>
+</div>
+<div id="tab5" hidden>
+<section class="panel"><h2>ステータス入力</h2>
+<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px"><button type="button" id="x_get" style="margin:0">ステータス計算から取得する</button><span class="note" id="x_msg" style="margin:0"></span></div>
+<div class="grid"><div><label for="x_lv">プレイヤーレベル</label><input id="x_lv" type="number" min="1" value="64"></div><div><label for="x_atk">自分の攻撃力</label><input id="x_atk" type="number" min="0" value="0"></div></div>
+<p class="note">ダメージ計算に必要なのは、自分の攻撃力とプレイヤーレベルです。</p></section>
+<section class="panel" id="y_box"><h2>敵の選択</h2>
+<div class="grid">
+<div><label for="y_reg">地域</label><select id="y_reg"></select></div>
+<div id="y_w1"><label for="y_cat">種類</label><select id="y_cat"></select></div>
+<div id="y_w2"><label for="y_area">エリア</label><select id="y_area"></select></div>
+<div><label for="y_en">敵</label><select id="y_en"></select></div>
+<div id="y_w3" hidden><label for="y_pt">人数</label><select id="y_pt"></select></div>
+</div>
+<div class="grid" style="margin-top:12px"><div><label>敵のレベル</label><b id="y_lv" style="font-size:1.4rem;color:var(--accent)">-</b></div><div><label>敵のHP</label><b id="y_hp" style="font-size:1.4rem;color:var(--accent)">-</b></div><div><label>敵の防御力(DEF)</label><b id="y_def" style="font-size:1.4rem;color:var(--accent)">-</b></div></div>
+</section>
+<section class="panel"><h2>スキル</h2>
+<div class="grid"><div><label for="x_role">職業</label><select id="x_role"></select></div><div><label for="x_sk">スキル</label><select id="x_sk"></select></div></div>
+<p class="note" id="x_info" style="margin-top:12px"></p></section>
+<section class="panel"><h2>メカスキル(使用する/しない)</h2>
+<div class="grid"><div id="m_w_dr"><label for="m_dr">メカドローン・集中射撃(Lv55〜)</label><select id="m_dr"><option value="0">使用しない</option><option value="1">使用する</option></select></div>
+<div id="m_w_pk"><label for="m_pk">メカかぼちゃ(Lv45〜・一般モンスターのみ)</label><select id="m_pk"><option value="0">使用しない</option><option value="1">使用する</option></select><span class="note" id="m_pknote"></span></div></div>
+<div id="m_pkin" hidden class="grid" style="margin-top:12px"><div><label for="m_ch">体力クレパス投資数</label><input id="m_ch" type="number" min="0" value="0"></div><div><label for="m_cd">防御クレパス投資数</label><input id="m_cd" type="number" min="0" value="0"></div><div><label for="m_he">装備の体力強化数値の合計</label><input id="m_he" type="number" min="0" value="0"></div><div><label for="m_de">装備の防御強化数値の合計</label><input id="m_de" type="number" min="0" value="0"></div></div>
+<p class="note" id="m_info" style="margin-top:12px"></p>
+<p class="note">「ステータス計算から取得する」を押すと、クレパス投資数と強化数値も自動で入ります(強化数値: 帽子Lv×10、上衣Lv×8、下衣は体力Lv×4・防御Lv×5)。手で変えることもできます。</p>
+</section>
+<section class="panel"><h2>バフ効果</h2>
+<div class="grid"><div><label for="b_on">応援フラッグ(ヒーラーのバフ)</label><select id="b_on"><option value="0">受けていない</option><option value="1">受けている</option></select></div>
+<div id="b_raid" hidden><label for="b_ch">体力クレパス投資数</label><input id="b_ch" type="number" min="0" value="0"></div>
+<div id="b_raid2" hidden><label for="b_cd">防御クレパス投資数</label><input id="b_cd" type="number" min="0" value="0"></div></div>
+<p class="note" id="b_info" style="margin-top:12px"></p></section>
+<section class="panel"><h2>結果(単体の敵を想定)</h2><div class="tw" id="r_out"></div></section>
 </div>
 </main>
 
@@ -321,8 +378,10 @@ $('glock').onclick=()=>{
   for(let i=0;i<4;i++)upd(i);updTot();
 };
 $('greset').onclick=()=>{locked=false;lv=init.slice();uG=[0,0,0,0];uP=[0,0,0,0];msg=['','','',''];mc=['','','',''];for(let i=0;i<4;i++)upd(i);updTot();};
-function showTab(n){$('tab1').hidden=n!=1;$('tab2').hidden=n!=2;$('tb1').className=n==1?'on':'';$('tb2').className=n==2?'on':'';$('tab3').hidden=n!=3;$('tb3').className=n==3?'on':'';}
-$('tb1').onclick=()=>showTab(1);$('tb2').onclick=()=>showTab(2);$('tb3').onclick=()=>showTab(3);
+let curSub=1;
+function showTab(n){curSub=n;['tab1','tab2','tab3'].forEach((id,k)=>{$(id).hidden=n!=k+1;});['tb1','tb2','tb3'].forEach((id,k)=>{$(id).className=n==k+1?'on':'';});}
+function setTop(t){$('top1').className=t==1?'on':'';$('top2').className=t==2?'on':'';$('subtabs').hidden=t!=1;$('stabs').hidden=t!=2;document.body.classList.toggle('stat',t==2);$('ttl').textContent=t==1?'強化コスト分布シミュレーター':'ステータス計算';$('sub').hidden=t!=1;if(t==2)showStat(curStat);else{$('tab4').hidden=true;$('tab5').hidden=true;}if(t==1)showTab(curSub);else['tab1','tab2','tab3'].forEach(id=>{$(id).hidden=true;});}
+$('tb1').onclick=()=>showTab(1);$('tb2').onclick=()=>showTab(2);$('tb3').onclick=()=>showTab(3);$('top1').onclick=()=>setTop(1);$('top2').onclick=()=>setTop(2);
 function remDisp(){
   $('glinkon').disabled=locked;$('gbi').disabled=locked;$('gbt').disabled=locked;$('gmon').disabled=locked;document.querySelectorAll('.mb').forEach(b=>b.disabled=locked);
   const rem=funds()-uG.reduce((a,b)=>a+b,0),on=linked&&locked;$('gadd').hidden=!(on&&short);$('gauto').disabled=!locked||calcBusy;$('gcalc').disabled=!(locked&&linked)||!!autoT||calcBusy;$('gbig').hidden=!on;if(on){$('gbig').innerHTML='<small>残り所持金</small><b>'+fmt(rem)+'</b> G';$('gbig').className=rem<funds()*0.1?'low':'';}$('grem').innerHTML='';
@@ -428,6 +487,176 @@ $('rgo').onclick=async()=>{
   $('rout').hidden=false;drawChart($('rchart'),A.sorted,m1,exG);$('rchp').hidden=false;
   $('rst').textContent='完了';$('rgo').disabled=false;
 };
+
+let curStat=1;
+function showStat(n){curStat=n;$('tab4').hidden=n!=1;$('tab5').hidden=n!=2;$('st1').className=n==1?'on':'';$('st2').className=n==2?'on':'';}
+$('st1').onclick=()=>showStat(1);$('st2').onclick=()=>showStat(2);
+const TIERS=[5,10,15,20,25,30,40,50,60,70,80],SL=['武器','帽子','上衣','下衣'];
+const EQN=[
+ ['妖精樹の見習いの杖','妖精の森の斥候の杖','精霊結束の杖','竜鱗刻印の杖','沼霧の呪杖','哭声封印の杖','霜花結晶の杖','黎明の大樹の杖','古森の精髄の杖','地鳴りの心核の杖','止んだ雷の杖'],
+ ['獣人の革頭巾','獣人戦士のかぶと','エルフの斥候帽','竜族の戦闘かぶと','湿地魔女のつば広帽子','墓守りのフード','霜星の破片兜','黎明の番人の兜','牙君主の兜','巨獣の甲羅の兜','大平原の角兜'],
+ ['妖精団の初心者の上着','妖精団の巡回者の上着','精霊使いのローブ','竜鱗の胸当て','月暈魔女のローブ','灰陰の喪服ローブ','雪霜精霊のローブ','大樹の根の胸当て','古森の革の胸当て','地鳴りの甲殻の胸当て','止んだ雷の胸当て'],
+ ['獣人の革の脚衣','獣人戦士の脚衣','エルフ猟師の脚衣','竜族の戦闘脚衣','湿地魔女の脚衣','墓守りの脚衣','霜星の破片脚衣','黎明の番人の脚衣','牙君主の脚衣','巨獣の爪の脚衣','大平原の蹄の脚衣']];
+const WA=[8,13,17,22,26,31,40,49,58,67,76];
+const HD=[1,1,2,2,3,4,4,6,6,7,8],HH=[10,15,19,24,29,34,44,54,64,74,84];
+const TD=[2,3,4,5,6,7,9,11,13,15,17],TH=[20,35,48,60,72,85,110,135,160,185,210];
+const BD=[1,2,3,4,4,5,7,8,10,12,13],BH=[15,20,28,36,44,51,66,81,96,111,126];
+const opts=i=>'<option value="-1">なし</option>'+TIERS.map((t,k)=>'<option value="'+k+'">Lv'+t+' '+EQN[i][k]+(t==25?'(入手不可)':'')+'</option>').join('');
+$('s_eq').insertAdjacentHTML('beforeend',SL.map((n,i)=>'<tr><td>'+n+'</td><td><select id="s_e'+i+'">'+opts(i)+'</select></td><td><input type="number" min="0" max="20" id="s_l'+i+'" value="0" style="min-width:64px"></td></tr>').join(''));
+let lastStat=null;const TOT={};
+const f1=x=>(Math.floor(x*10+1e-9)/10).toLocaleString('ja-JP',{minimumFractionDigits:1,maximumFractionDigits:1});
+function calcStat(){
+  const lv=Math.max(1,Math.floor(+$('s_lv').value||1));
+  const sel=[0,1,2,3].map(i=>+$('s_e'+i).value);
+  const lack=[0,1,2,3].filter(i=>sel[i]>=0&&TIERS[sel[i]]>lv);
+  const w=$('s_warn');
+  if(lack.length){w.hidden=false;w.textContent='レベルが不足しています！('+lack.map(i=>SL[i]+' Lv'+TIERS[sel[i]]).join('、')+')';$('s_res').innerHTML='';$('s_note').textContent='';lastStat=null;return;}
+  w.hidden=true;
+  const en=[0,1,2,3].map(i=>Math.max(0,Math.min(20,Math.floor(+$('s_l'+i).value||0))));
+  const cA=+$('s_ca').value||0,cH=+$('s_ch').value||0,cD=+$('s_cd').value||0;
+  const v=(a,i)=>sel[i]>=0?a[sel[i]]:0,r1=x=>Math.round(x*10)/10;
+  const row=(n,b,e,pe,pc)=>{
+    const base=b+e,se=base*pe/100,sc=base*pc/100,st=Math.floor(se+sc+1e-9);TOT[n]=base+st;
+    return '<tr><td>'+n+'</td><td>'+fmt(b)+'</td><td>'+fmt(e)+'</td><td>'+f1(se)+' <span class="note">('+pe+'%)</span></td><td>'+f1(sc)+' <span class="note">('+pc+'%)</span></td><td>'+f1(se+sc)+'</td><td><b>'+fmt(base+st)+'</b></td></tr>';
+  };
+  $('s_res').innerHTML='<tr><th></th><th>基本</th><th>装備</th><th>装備強化</th><th>クレパス強化</th><th>強化合計</th><th>合計</th></tr>'
+   +row('攻撃力',(lv-1)*2+10,v(WA,0),r1(en[0]*0.6),cA*6)
+   +row('体力',(lv-1)*20+100,v(HH,1)+v(TH,2)+v(BH,3),r1(en[2]*0.8+en[3]*0.4),cH*8)
+   +row('防御力',(lv-1)+5,v(HD,1)+v(TD,2)+v(BD,3),r1(en[1]*1+en[3]*0.5),cD*15);
+  $('s_note').textContent='強化(装備強化+クレパス強化)は、(基本+装備)に対する%を合算して計算しています。最終数値(合計)は、小数点以下を切り捨てています。';lastStat={lv,atk:TOT['攻撃力'],hp:TOT['体力'],def:TOT['防御力'],en:en.slice(),ch:cH,cd:cD};
+}
+$('tab4').addEventListener('input',calcStat);$('tab4').addEventListener('change',calcStat);
+$('s_best').onclick=()=>{const lv=Math.max(1,Math.floor(+$('s_lv').value||1));let k=-1;TIERS.forEach((t,j)=>{if(t<=lv&&t!=25)k=j;});for(let i=0;i<4;i++)$('s_e'+i).value=k;calcStat();};
+$('s_bulk').addEventListener('input',()=>{const v=$('s_bulk').value;if(v==='')return;const c=Math.max(0,Math.min(20,Math.floor(+v||0)));for(let i=0;i<4;i++)$('s_l'+i).value=c;});
+calcStat();
+const XR=['アタッカー','タンク','ヒーラー'];
+const XS=[
+ [{n:'パンプキンマジック',lv:1,atk:1,h:1,cd:4.5,r:'単体',v:[['通常',1.3],['敵HP30%以下',2.0]]},
+  {n:'きれいなら やることない!',lv:10,atk:1,h:1,cd:6,r:'最大3体(ターゲット以外2体は減衰)',v:[['直撃',1.8],['巻き込み',0.9]]},
+  {n:'こんぺいとう花火～☆',lv:20,atk:1,h:4,cd:9,r:'単体(4ヒットとも同じ1体)',v:[['',1.0]]},
+  {n:'ターボクリーンモードォォ!',lv:30,atk:1,h:1,cd:7.5,r:'最大3体(減衰なし)',v:[['',1.6]]}],
+ [{n:'守護の咆哮',lv:40,atk:0},
+  {n:'シールドバッシュ',lv:40,atk:1,h:1,cd:6,r:'最大3体(ターゲット以外減衰あり)',v:[['直撃',3.6],['巻き込み',0.9]]},
+  {n:'挑発',lv:40,atk:1,only:'normal',h:1,cd:20,r:'範囲15m(一般モンスターのみ。引き寄せ+1秒気絶)',v:[['',0.4]]},
+  {n:'大地メテオ',lv:40,atk:1,h:1,cd:7.5,r:'最大6体(減衰なし)',v:[['',0.8]]}],
+ [{n:'パンプキンジュースシャワー',lv:40,atk:0},
+  {n:'ほこり払い',lv:40,atk:1,h:1,cd:6,r:'最大3体(ターゲット以外減衰)',v:[['直撃',1.44],['巻き込み',0.72]]},
+  {n:'応援フラッグ',lv:40,atk:0},
+  {n:'ホタルの護衛',lv:40,atk:1,h:5,cd:7.5,r:'基本は単体(5回未満で倒したら余りは他の敵へ・最大5体)',v:[['',0.77]]}]];
+function xBuild(){
+  const lv=Math.max(1,Math.floor(+$('x_lv').value||1));
+  const rs=$('x_role'),prevR=rs.value,roles=lv>=40?[0,1,2]:[0];
+  rs.innerHTML=roles.map(r=>'<option value="'+r+'">'+XR[r]+'</option>').join('');
+  rs.value=roles.includes(+prevR)?prevR:'0';
+  const r=+rs.value,sk=$('x_sk'),prevS=sk.value;
+  const list=XS[r].map((s,i)=>({s,i})).filter(o=>lv>=o.s.lv);
+  const can=o=>o.s.atk&&(!o.s.only||o.s.only===curKind);
+  sk.innerHTML=list.map(o=>'<option value="'+o.i+'"'+(can(o)?'':' disabled')+'>S'+(o.i+1)+' '+o.s.n+(!o.s.atk?'(攻撃ではないため選択不可)':!can(o)?'(一般モンスターのみ)':'')+'</option>').join('');
+  const ok=list.filter(can).map(o=>String(o.i));
+  sk.value=ok.includes(prevS)?prevS:(ok[0]||'');
+  const s=XS[r][+sk.value];
+  $('x_info').innerHTML=s&&s.atk?'スキル係数: '+s.v.map(a=>(a[0]?a[0]+' ':'')+'×'+a[1]).join(' / ')+(s.h>1?'(×'+s.h+'ヒット)':'')+'<br>範囲: '+s.r+'<br>クールダウン: '+s.cd+'秒':'';
+}
+$('tab5').addEventListener('input',xBuild);$('tab5').addEventListener('change',xBuild);
+const ENEMY={"世界樹教団":{"一般モンスター":{"陽風の森":[["森の妖精",1,30,1],["露の妖精",3,45,2],["新芽の妖精",5,55,2],["陽花の妖精",6,60,2],["森の獣人斥候",8,80,3],["森の獣人罠猟師",10,85,3]],"陽枝の深森":[["エルフの森番",12,100,3],["さすらう風精霊",14,115,4],["落ち葉のエルフ森番",17,130,5],["そよ風精霊",19,145,5]],"月霧の湿地":[["苔背のヒキガエル",20,150,6],["湿地ヒキガエルの使い魔",21,155,6],["水草の妖精",21,155,6],["沼火の鬼火",22,160,6],["見習い湿地魔女",23,170,6]],"月暈の沼谷":[["黒沼のヒキガエル",24,175,6],["月明かりの鬼火",25,185,7],["月影魔女",25,180,7],["蒼白の鬼火",26,185,7]],"灰霧の墓地":[["目覚めたての亡霊",26,180,7],["灰火の鬼火",26,185,7],["さまよう亡霊",27,190,7],["やせ細った影",27,195,7],["霧の影",28,205,8]],"灰影の墓丘":[["墓場の影",29,210,8],["哭声幽霊",29,220,8],["灰亡霊",30,210,8],["灰色の哭声幽霊",30,215,8]],"霜星の雪丘":[["雪花の妖精",30,205,8],["霜熊の獣人",31,220,8],["霜の鬼火",32,225,8],["氷精霊",33,230,9],["雪盲の影",33,235,9]],"燠火の溶岩窟":[["燠火のトカゲ",34,235,9],["溶岩の鬼火",35,240,9],["燠火の精霊",35,245,9],["火傷の獣人",36,250,9],["燠火の子竜",37,255,9]],"黎明光の根洞":[["黎明の妖精",37,250,9],["根絡みの亡霊",38,265,10],["根のゴーレム",38,260,10],["黎明の番精霊",39,265,10],["黎明エルフの守護兵",39,270,10],["黎明の竜鱗兵",40,275,10]]},"フィールドボス":{"陽風の森":[["幼い竜",5,300,5]],"陽枝の深森":[["古の風精霊",15,620,10]],"月霧の湿地":[["沼地魔女見習い長",23,890,15]],"月暈の沼谷":[["大湿地魔女",25,960,16]],"灰影の墓丘":[["墓守の大亡霊",30,1150,18]],"霜星の雪丘":[["霜星の古の精霊",34,1250,21]],"黎明光の根洞":[["黎明光の守護者",40,1450,24]]}},"モナティアム":{"一般モンスター":{"黄昏森の国境":[["黄昏蝶の妖精",41,320,10],["茨藪の獣人",41,320,10],["国境エルフの斥候",42,330,10],["黄昏花の精霊",42,330,10],["薄暮の狼獣人",43,335,10]],"歯車野":[["野原の風精霊",44,340,10],["故障した偵察ドローン",44,350,10],["歯車刃の収穫機",45,350,10],["鎌使いの野ねずみ獣人",45,350,10],["油灯の鬼火",46,355,10]],"街灯工業地帯":[["巡回ドローン（旧型）",47,365,11],["牽引アームオートマタ",47,365,11],["溶接花火インプボット",48,370,11],["廃品圧縮ゴーレム",48,370,11],["過負荷配電精霊",49,380,11]],"信号灯の廃線":[["線路清掃ボット",50,385,11],["信号灯の幽霊",50,385,11],["廃線トロッコゴーレム",51,390,11],["切断機オートマタ",51,390,11],["スパーク精霊",52,400,11]],"溶鉄色の煙突地区":[["煤まみれインプボット",53,405,12],["廃棄清掃ドローン",53,405,12],["圧着プレスゴーレム",54,415,12],["耐熱服のモグラ獣人",54,415,12],["灰塵精霊",55,420,12]],"雷鉄塔の尾根":[["落雷精",56,430,12],["送電監視ドローン",56,430,12],["コイル蜘蛛ボット",57,435,12],["避雷騎士オートマタ",57,435,12],["雷雲ワイバーン",58,440,13]],"動力核深部":[["コア警備オートマタ",59,450,13],["冷却散布ドローン",59,450,13],["溶解スライムコア",60,455,13],["暴走電力精霊",60,455,13],["監視眼レンズ",60,455,13]]},"フィールドボス":{"黄昏森の国境":[["黄昏森の大族長",43,2256,25]],"歯車野":[["錆びた番兵ギガント",46,2400,27]],"街灯工業地帯":[["工業地帯監督オートマタ",49,2544,29]],"信号灯の廃線":[["廃線機関長の幽霊",52,2688,30]],"溶鉄色の煙突地区":[["溶鉱炉コアゴーレム",55,2832,32]],"雷鉄塔の尾根":[["雷鉄塔の守護機",58,2976,33]],"動力核深部":[["深部監視管制塔",60,3072,35]]}},"獣人村":{"一般モンスター":{"瀬の森":[["瀬の森の妖精",61,520,14],["おびえた角鹿の獣人",61,520,14],["瀬辺の水精",62,530,15],["茂みのエルフ狩人",62,530,15],["瀬の森の風精",63,535,15]],"草の尾根":[["尾根の野花の妖精",64,545,15],["草むらのオオヤマネコ",64,545,15],["ひづめの猪",65,550,15],["尾根の鷹の精霊",65,550,15],["たてがみ狼の斥候",66,560,15]],"狩り道":[["狩り道の勢子犬",67,570,16],["剛毛のアナグマ",67,570,16],["牙の猪",68,575,16],["罠牙の山猫",68,575,16],["影の豹",69,585,16]],"牧草地":[["牧草の露の妖精",70,590,16],["幼い角バイソン",70,590,16],["牧草地のたてがみ馬",71,600,17],["突進する角バイソン",71,600,17],["バイソンの群れの先鋒",72,610,17]],"狼峠":[["峠道の風の精霊",73,615,17],["灰色のたてがみ狼",73,615,17],["峠の影狼",74,625,17],["狼の群れの追い手",74,625,17],["牙の頭領狼",74,625,17]],"茨の藪":[["棘花の妖精",75,630,17],["茂みのアナグマ戦士",75,630,17],["茂みの迷路の山猫",76,640,18],["茨の藪の爪熊",76,640,18],["大棘の猪",76,640,18]],"岩の崖":[["崖の風の妖精",77,650,18],["断崖のひづめ山羊",77,650,18],["断崖の猛禽の精霊",78,655,18],["岩獅子の狩人",78,655,18],["大岩獅子",78,655,18]],"大平原":[["平原の露の妖精",79,665,18],["大移動の先発バイソン",79,665,18],["平原のたてがみ獅子",80,670,18],["雷ひづめのバイソン",80,670,18],["大移動の見張り巨獣",80,670,18]]},"フィールドボス":{"瀬の森":[["瀬の渡りの大角の頭",63,4825,36]],"草の尾根":[["草の尾根のたてがみ大将",66,5040,38]],"狩り道":[["狩り道の群れの大将",69,5255,39]],"牧草地":[["牧草地のバイソン大将",72,5470,41]],"狼峠":[["狼峠の狼王",74,5615,42]],"茨の藪":[["茨の藪の熊王",76,5760,43]],"岩の崖":[["岩の崖の獅子王",78,5905,44]],"大平原":[["雷角の大君主",80,6050,45]]}},"幽霊の沼":{"一般モンスター":{"霧の道":[["いたずらランタン",81,760,21],["郵便幽霊",81,760,21],["水たまりゼリー",82,770,21],["なくした鍵",82,770,21],["提灯コウモリ",83,780,21]],"野菜の家庭菜園":[["麦わら帽子カラス",84,790,22],["じょうろ精霊",84,790,22],["逃げるバケツ",85,795,22],["傘の幽霊",85,795,22],["泣き虫ヒキガエル",86,805,22]],"お使い道":[["うわさのチラシ",87,815,22],["おしゃべり箱",87,815,22],["通せんぼ看板",88,825,23],["お使いかばん",88,825,23],["紙コウモリ",89,835,23]],"写真館横丁":[["いたずらカメラ",90,840,23],["フィルムの怪物",90,840,23],["セルフタイマー",91,850,23],["額縁幽霊",91,850,23],["フラッシュコウモリ",92,860,24]],"劇場前":[["台本の山",93,870,24],["仮面幽霊",93,870,24],["検札係",94,880,24],["拍手人形",94,880,24],["カーテンモンスター",94,880,24]],"屋根道":[["配達ポスト",95,885,24],["ほうき幽霊",95,885,24],["物干しロープグモ",96,895,25],["屋根猫",96,895,25],["煙突の煙",96,895,25]],"時計塔":[["振り子コウモリ",97,905,25],["鐘綱グモ",97,905,25],["寝坊した時計",98,915,25],["風の手紙",98,915,25],["屋根鳩",98,915,25]],"沼の果て":[["満月ゼリー",99,925,25],["星明かりの鬼",99,925,25],["霧の羊",100,930,26],["迷子の幽霊",100,930,26],["ランタンの鳥",100,930,26]]},"フィールドボス":{"霧の道":[["迷子の郵便かばん",83,7015,53]],"野菜の家庭菜園":[["畑のかかし",86,7260,54]],"お使い道":[["忘れ物ロッカー",89,7500,56]],"写真館横丁":[["集合写真カメラ",92,7740,58]],"劇場前":[["最後の進行表",94,7905,59]],"屋根道":[["大きな洗濯かご",96,8065,60]],"時計塔":[["壊れた大時計",98,8225,62]],"沼の果て":[["沼の果ての大灯籠",100,8385,63]]}},"レイドボス":[["竜鱗の守護者",10,[3200,5600,7520,8960],8],["墓守の石像亡霊",28,[13800,24150,32430,38640],17],["燠火の竜鱗の暴君",37,[19600,34300,46060,54880],22],["封印された試作ギガント",50,[42000,73500,98700,117600],26],["暴走する動力核",55,[62000,108500,145700,173600],31],["古森の牙君主",65,[86000,150500,202100,240800],37],["地鳴りの巨獣",75,[114000,199500,267900,319200],42]]};
+let curEnemy=null,curKind='normal';
+function fillSel(id,items,keep){const e=$(id),p=e.value;e.innerHTML=items.map(x=>'<option value="'+x[0]+'">'+x[1]+'</option>').join('');if(keep&&items.some(x=>String(x[0])===p))e.value=p;}
+function yShow(lv,hp,df){curEnemy=lv==null?null:{lv,hp,def:df};$('y_lv').textContent=lv==null?'-':lv;$('y_hp').textContent=lv==null?'-':fmt(hp);$('y_def').textContent=lv==null?'-':df;}
+function yBuild(ev){
+  const t=ev&&ev.target&&ev.target.id,reg=$('y_reg').value,raid=reg==='レイドボス';
+  $('y_w1').hidden=raid;$('y_w2').hidden=raid;$('y_w3').hidden=!raid;
+  if(raid){
+    const arr=ENEMY[reg];
+    if(t!=='y_en'&&t!=='y_pt'){fillSel('y_en',arr.map((e,i)=>[i,e[0]+'(Lv'+e[1]+')']),false);fillSel('y_pt',[[0,'1人(ソロ)'],[1,'2人'],[2,'3人'],[3,'4人']],true);}
+    curKind='raid';const e=arr[+$('y_en').value];yShow(e[1],e[2][+$('y_pt').value],e[3]);return;
+  }
+  if(t!=='y_en'){
+    fillSel('y_cat',Object.keys(ENEMY[reg]).map(k=>[k,k]),true);
+    const cat=$('y_cat').value;
+    fillSel('y_area',Object.keys(ENEMY[reg][cat]).map(k=>[k,k]),t==='y_area');
+    const area=$('y_area').value,arr=ENEMY[reg][cat][area]||[];
+    fillSel('y_en',arr.map((e,i)=>[i,e[0]]),false);
+  }
+  curKind=$('y_cat').value==='一般モンスター'?'normal':'field';
+  const arr=(ENEMY[reg][$('y_cat').value]||{})[$('y_area').value]||[],e=arr[+$('y_en').value];
+  e?yShow(e[1],e[2],e[3]):yShow(null);
+}
+fillSel('y_reg',Object.keys(ENEMY).map(k=>[k,k]),false);
+$('y_box').addEventListener('change',yBuild);
+yBuild();
+$('x_get').onclick=()=>{
+  if(!lastStat){$('x_msg').textContent='ステータス計算から取得できませんでした(レベルが不足している装備があります)。';return;}
+  $('x_lv').value=lastStat.lv;$('x_atk').value=lastStat.atk;
+  $('x_msg').textContent='ステータス計算から取得しました(プレイヤーレベル '+lastStat.lv+'、攻撃力 '+fmt(lastStat.atk)+')。';
+  const E=lastStat.en;$('m_ch').value=lastStat.ch;$('m_cd').value=lastStat.cd;$('m_he').value=E[2]*8+E[3]*4;$('m_de').value=E[1]*10+E[3]*5;
+  $('b_ch').value=lastStat.ch;$('b_cd').value=lastStat.cd;
+  xBuild();mBuild();bBuild();rBuild();
+};
+function mBuild(ev){
+  const lv=Math.max(1,Math.floor(+$('x_lv').value||1)),t=ev&&ev.target&&ev.target.id,dr=$('m_dr'),pk=$('m_pk');
+  $('m_w_dr').hidden=lv<55;$('m_w_pk').hidden=lv<45;
+  if(lv<55)dr.value='0';if(lv<45)pk.value='0';
+  const normal=curKind==='normal';
+  pk.disabled=!normal;if(!normal)pk.value='0';
+  $('m_pknote').textContent=normal?'':'(一般モンスター以外には使用できません)';
+  
+  
+  const useDr=dr.value==='1'&&lv>=55,usePk=pk.value==='1'&&lv>=45&&normal;
+  $('m_pkin').hidden=!usePk;
+  $('x_role').disabled=false;$('x_sk').disabled=false;
+  let h='';
+  if(useDr)h='メカドローン・集中射撃: スキル係数 ×0.5 ×10ヒット / 範囲: 単体 / クールダウン: 30.0秒';
+  if(usePk){const g=id=>+$(id).value||0,bA=(lv-1)*2+10,sum=(g('m_ch')+g('m_he')/80)+(g('m_cd')+g('m_de')/150),r=Math.round(sum*10+1e-9)/10,c=0.05+0.14*r;
+    h+=(h?'<br>':'')+'メカかぼちゃ: スキル係数 = 0.05 + 0.14 × '+r.toFixed(1)+' = <b>'+c.toFixed(3)+'</b>(括弧内の合計 '+sum.toFixed(3)+' を小数第一位に四捨五入 / 基本攻撃力 '+fmt(bA)+' を使用)';}
+  $('m_info').innerHTML=h;
+}
+$('tab5').addEventListener('input',mBuild);$('tab5').addEventListener('change',mBuild);
+function rBuild(){
+  const box=$('r_out'),E=curEnemy;
+  const lv=Math.max(1,Math.floor(+$('x_lv').value||1)),atk=+$('x_atk').value||0;
+  if(!E){box.innerHTML='<p class="note">敵を選択してください。</p>';return;}
+  if(!(atk>0)){box.innerHTML='<p class="note">自分の攻撃力を入力してください。</p>';return;}
+  const rows=[],base=10+2.5*lv,dmg=(a,k)=>Math.round(a*k*(1+curBuff)*base/(base+E.def)+1e-9);
+  const add=(n,k,hits,cd,per,sim,nc)=>{
+    const tot=per*hits;let cnt=null;
+    if(tot>0&&!nc){if(sim){let hp=E.hp,c=0;while(hp>0&&c<100000){hp-=sim(hp,E.hp);c++;}cnt=c;}else cnt=Math.ceil(E.hp/tot);}
+    rows.push({n,k,per,hits,tot,cd,cnt});
+  };
+  const s=XS[+$('x_role').value]&&XS[+$('x_role').value][+$('x_sk').value];
+  if(s&&s.atk&&(!s.only||s.only===curKind)){
+    const two=s.v.length===2&&s.v[1][0]==='敵HP30%以下';
+    s.v.filter(a=>a[0]!=='巻き込み').forEach(a=>{
+      const per=dmg(atk,a[1]);
+      let sim=null;
+      if(two&&a[0]==='通常'){const hi=dmg(atk,s.v[1][1])*s.h,lo=per*s.h;sim=(hp,mx)=>hp<=mx*0.3?hi:lo;}
+      add(s.n+(a[0]?'('+a[0]+')':''),a[1],s.h,s.cd,per,sim,two&&a[0]==='敵HP30%以下');
+    });
+  }
+  if($('m_dr').value==='1'&&lv>=55)add('メカドローン・集中射撃',0.5,10,30,dmg(atk,0.5));
+  if($('m_pk').value==='1'&&lv>=45&&curKind==='normal'){
+    const g=id=>+$(id).value||0,sum=(g('m_ch')+g('m_he')/80)+(g('m_cd')+g('m_de')/150),c=0.05+0.14*(Math.round(sum*10+1e-9)/10);
+    const bA=(lv-1)*2+10,att=15/(15+Math.max(0,E.lv-lv-5));
+    add('メカかぼちゃ',c,1,null,Math.round(bA*c*base/(base+E.def)*att+1e-9));
+  }
+  if(!rows.length){box.innerHTML='<p class="note">選べるスキルがありません。</p>';return;}
+  const f1d=x=>x.toLocaleString('ja-JP',{minimumFractionDigits:1,maximumFractionDigits:1});
+  box.innerHTML='<table><tr><th>スキル</th><th>スキル係数</th><th>1ヒット</th><th>ヒット数</th><th>1回の合計</th><th>クールダウン</th><th>秒間ダメージ</th><th>倒すのに必要な回数</th><th>討伐時間</th></tr>'
+   +rows.map(r=>'<tr><td>'+r.n+'</td><td>×'+(+r.k.toFixed(3))+'</td><td>'+fmt(r.per)+'</td><td>'+r.hits+'</td><td><b>'+fmt(r.tot)+'</b></td><td>'+(r.cd?f1d(r.cd)+'秒':'-')+'</td><td>'+(r.cd?f1d(r.tot/r.cd):'-')+'</td><td>'+(r.cnt==null?'-':fmt(r.cnt)+'回')+'</td><td>'+(r.cd&&r.cnt?f1d((r.cnt-1)*r.cd)+'秒':'-')+'</td></tr>').join('')+'</table>';
+}
+let curBuff=0;
+function bBuild(ev){
+  const t=ev&&ev.target&&ev.target.id;
+  if(t==='x_role'&&$('x_role').value==='2')$('b_on').value='1';
+  const on=$('b_on').value==='1',raid=curKind==='raid';
+  $('b_raid').hidden=!(on&&raid);$('b_raid2').hidden=!(on&&raid);
+  let eff=0;
+  if(on){eff=13;if(raid){const st=(+$('b_ch').value||0)+(+$('b_cd').value||0);eff=13*Math.min(1.3,0.5+0.05*st);}}
+  curBuff=eff/100;
+  $('b_info').textContent=on?'攻撃力 +'+(Math.round(eff*10)/10)+'%':'';
+}
+$('tab5').addEventListener('input',bBuild);$('tab5').addEventListener('change',bBuild);
+$('tab5').addEventListener('input',rBuild);$('tab5').addEventListener('change',rBuild);
+xBuild();mBuild();bBuild();rBuild();
 buildCards();
 </script>
 </body>
